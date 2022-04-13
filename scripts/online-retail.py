@@ -3,21 +3,30 @@ from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType
 
+#schema_online_retail = (StructType([ 
+#    StructField("InvoiceNo",StringType(),True), 
+#    StructField("StockCode",IntegerType(),True), 
+#    StructField("Description",StringType(),True), 
+#    StructField("Quantity", IntegerType(), True), 
+#    StructField("InvoiceDate", StringType(), True), 
+#    StructField("UnitPrice", FloatType(), True),
+#    StructField("CustomerID", IntegerType(), True ),
+#    StructField("Country", StringType(), True)
+#                   ])
+#                )
+
 def trim_column(df,column):
-	df = df.withColumn(column, (
-		  F.trim(column)
-	))
+	df = df.withColumn(column, ( F.trim(column)))
 	return df
 
 def check_empty_column(column):
 	return (F.col(column).isNull()) | (F.col(column) == '') 
 
-
 def InvoiceNo_qa(df):
 	df = trim_column(df, 'InvoiceNo')
 	df = df.withColumn("InvoiceNo_qa", (
 							F.when((F.length(df.InvoiceNo) != 6) &
-											(~df.InvoiceNo.startswith('c')), "F")
+											(~df.InvoiceNo.contains('c')), "F")
 					 		 .when( check_empty_column("InvoiceNo") , 'M')
 				     		 .when(df.InvoiceNo.rlike("[a-zA-Z]+"), "A")
 					 	)
@@ -36,7 +45,9 @@ def StockCode_qa(df):
 def Quantity_qa(df):
 	df = trim_column(df, 'Quantity')
 	df = df.withColumn('Quantity_qa',(
-							F.when(check_empty_column("Quantity") , 'M')))
+							F.when(check_empty_column("Quantity") , 'M')
+							.when(df.Quantity < 0, 'I')
+							))
 	return df
 
 def InvoiceDate_qa(df):
@@ -46,9 +57,7 @@ def InvoiceDate_qa(df):
 	return df
 
 def InvoiceDate_tr(df):
-	df = df.withColumn('InvoiceDate',(
-						F.to_timestamp( df.InvoiceDate)
-	))
+	df = df.withColumn('InvoiceDate',(F.to_timestamp(df.InvoiceDate, 'dd/MM/yyyy HH:MM')))
 	return df
 
 def UnitPrice_qa(df):
@@ -74,7 +83,121 @@ def Country_qa(df):
 	))
 	return df
 
+def quality_process(df):
+	df = InvoiceNo_qa(df)
+	df = StockCode_qa(df)
+	df = Quantity_qa(df)
+	df = InvoiceDate_qa(df)
+	df = InvoiceDate_tr(df)
+	df = UnitPrice_qa(df)
+	df = CustomerID_qa(df)
+	df = Country_qa(df)
+	return df
 
+
+def UnitPrice_tr(df):
+	df = df.withColumn('UnitPrice', (F.regexp_replace(df.UnitPrice, ",", ".")))
+	df = df.withColumn('UnitPrice', df.UnitPrice.cast('double'))
+	df = df.withColumn('UnitPrice', (F.when(df.UnitPrice < 0,0)
+									  .otherwise(df.UnitPrice)
+	))
+	return df
+
+def Quantity_tr(df):
+	df = df.withColumn('Quantity', df.Quantity.cast('integer'))
+	df = df.withColumn('Quantity', F.when(df.Quantity < 0, 0)
+									.otherwise(df.Quantity)
+	)
+	return df 
+	
+def Sale_tr(df):
+	df = df.withColumn('Sale', (
+			F.ceil((df.UnitPrice * df.Quantity).cast('double'))		
+	))
+	return df 
+
+def InvoiceDate_tr(df):
+	df = df.withColumn('InvoiceDate', 
+					   F.to_timestamp(df.InvoiceDate, 'd/M/yyyy HH:mm')
+	)
+	return df 
+
+def StockCode_tr(df):
+	df = df.withColumn('StockCode',(
+		   F.when(F.col('StockCode').startswith('gift'), 'gift')
+		   	.otherwise(F.col('StockCode'))
+	))
+	return df
+
+def transformation_process(df):
+	df = Quantity_tr(df)
+	df = UnitPrice_tr(df)
+	df = Sale_tr(df)
+	df = InvoiceDate_tr(df)
+	df = StockCode_tr(df)
+	return df 
+
+
+def pergunta_1(df):
+	gifts = df.filter(F.col('StockCode').contains('gift'))
+	return (gifts.groupBy('StockCode')
+				 .agg({'Quantity': 'sum'})
+				 .withColumnRenamed('sum(Quantity)', 'Quantity')
+				 .show()
+			)
+
+def pergunta_2(df):
+	gifts = df.filter(F.col('StockCode').contains('gift'))
+	return (gifts.groupby('StockCode', F.month('InvoiceDate'))
+				 .agg({'Quantity': 'sum'})
+				 .withColumnRenamed('sum(Quantity)', 'Quantity')
+				 .withColumnRenamed('month(InvoiceDate)', 'Month')
+				 .sort('Month', ascending = False)
+				 .show()
+		   )
+
+def pergunta_3(df):
+	samples = df.filter((F.col('StockCode').endswith('S')) & (F.col('StockCode') != 'PADS'))
+	return (samples.groupBy('StockCode')
+				 .agg({'Quantity': 'sum'})
+				 .withColumnRenamed('sum(Quantity)', 'Quantity')
+				 .show()
+			)
+
+def pergunta_4(df):
+	return (df.groupBy("StockCode")
+	 		  .agg({'Quantity': 'sum'})
+			  .withColumnRenamed('sum(Quantity)','Quantity')
+			  .sort('Quantity', ascending = False)
+			  .show()
+			) 
+
+def pergunta_5(df):
+	return (df.groupBy("StockCode", F.month('InvoiceDate'))
+	 		  .agg({'Quantity': 'sum'})
+			  .withColumnRenamed('sum(Quantity)','Quantity')
+			  .withColumnRenamed('month(InvoiceDate)', 'Month')
+			  .sort('Quantity', ascending = False)
+			  .show()
+			) 
+
+def pergunta_6(df):
+	return (df.groupBy("StockCode", F.hour('InvoiceDate'))
+	 		  .agg({'Sale': 'sum'})
+			  .withColumnRenamed('sum(Sale)','Sale')
+			  .withColumnRenamed('hour(InvoiceDate)', 'Hour')
+			  .sort('Sale', ascending = False)
+			  .show()
+			) 
+
+def pergunta_7(df):
+	return (df.groupBy("StockCode", F.month('InvoiceDate'))
+	 		  .agg({'Sale': 'sum'})
+			  .withColumnRenamed('sum(Sale)','Sale')
+			  .withColumnRenamed('month(InvoiceDate)', 'Month')
+			  .sort('Sale', ascending = False)
+			  .show()
+			) 
 
 if __name__ == "__main__":
 	sc = SparkContext()
@@ -86,28 +209,28 @@ if __name__ == "__main__":
 		          #.schema(schema_online_retail)
 		          .load("/home/spark/capgemini-aceleracao-pyspark/data/online-retail/online-retail.csv"))
 
-	#df.show(5)
-	#df.printSchema()
-	#df = InvoiceNo_qa(df)
-	#df = StockCode_qa(df)
-	#df = Quantity_qa(df)
-	#df = InvoiceDate_qa(df)
-	#df = UnitPrice_qa(df)
-	#df = CustomerID_qa(df)
-	#df = Country_qa(df)
-
-	df = df.withColumn("Sale", (
-		   F.when((~df.InvoiceNo.startswith('c')),
-		   		  (df.UnitPrice * df.Quantity)
-		   )))
-
-	df = InvoiceDate_tr(df)
-	
-	print("Pergunta 1")
-	df.filter(df.StockCode == 'gift_0001').show(5)
-	print("Pergunta 2")
-	df.groupby(F.month(df.InvoiceDate)).agg(sum('Sale').alias('sum_sale')).where(df.StockCode == 'gift_0001').show(5)
 	df.show(5)
+	#df = quality_process(df)
+	df = transformation_process(df)
+	print("Pergunta 1")
+	pergunta_1(df)
+	#df.show(5)
+
+	print("Pergunta 2")
+	pergunta_2(df)	
+
+	print("Pergunta 3")
+	pergunta_3(df)	
+
+	print("Pergunta 4")
+	pergunta_4(df)	
+
+	print('Pergunta 5')
+	pergunta_5(df)
 	
-	#df.filter(df.StockCode == "0001").show(5)
-	print("rodou ate o final")
+	print('Pergunta 6')
+	pergunta_6(df)	
+
+	print('Pergunta 7')
+	pergunta_7(df)	
+	#print("rodou ate o final")
