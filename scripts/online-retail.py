@@ -208,7 +208,7 @@ def pergunta_8(df):
 						 .withColumnRenamed('sum(Sale)', 'Sale')
 						 .withColumnRenamed('month(InvoiceDate)', 'month'))
 
-	windowsSpec     = Window.partitionBy('month').orderBy(F.col('Sale').desc())
+	windowsSpec      = Window.partitionBy('month').orderBy(F.col('Sale').desc())
 	sales_per_month2 = sales_per_month.withColumn("row_number", F.row_number().over(windowsSpec))
 	return sales_per_month2.filter(sales_per_month2.row_number == 1).show()
 
@@ -252,6 +252,12 @@ def pergunta_13(df):
 							   .show()
 	)
 
+def pergunta_1_sql():
+	spark.getOrCreate().sql(''' 
+							SELECT SUM(Quantity) AS GIFT_QUANTITY
+							FROM online_retail
+							WHERE StockCode LIKE "%gift%" 
+					''').show()
 
 if __name__ == "__main__":
 	sc = SparkContext()
@@ -263,46 +269,49 @@ if __name__ == "__main__":
 		          #.schema(schema_online_retail)
 		          .load("/home/spark/capgemini-aceleracao-pyspark/data/online-retail/online-retail.csv"))
 
+	df.createOrReplaceTempView('online_retail')
 	df = quality_process(df)
 	df = transformation_process(df)
 	sem_cancelamento = df.filter(~F.col('InvoiceNo').startswith('C'))
 
-	print("Pergunta 1")
-	pergunta_1(df)
+	#pergunta_1_sql()
 
-	print("Pergunta 2")
-	pergunta_2(df)	
+	# print("Pergunta 1")
+	# pergunta_1(df)
 
-	print("Pergunta 3")
-	pergunta_3(df)	
+	# print("Pergunta 2")
+	# pergunta_2(df)	
+
+	# print("Pergunta 3")
+	# pergunta_3(df)	
 	
-	print("Pergunta 4")
-	pergunta_4(df)	
+	# print("Pergunta 4")
+	# pergunta_4(df)	
 
-	print('Pergunta 5')
-	pergunta_5(df)
+	# print('Pergunta 5')
+	# pergunta_5(df)
 	
-	print('Pergunta 6')
-	pergunta_6(df)	
+	# print('Pergunta 6')
+	# pergunta_6(df)	
 
-	print('Pergunta 7')
-	pergunta_7(df)	
+	# print('Pergunta 7')
+	# pergunta_7(df)	
 
-	print('Pergunta 8')
-	pergunta_8(df)	
+	# print('Pergunta 8')
+	# pergunta_8(df)	
 
-	print('Pergunta 9')
-	pergunta_9(df)	
+	# print('Pergunta 9')
+	# pergunta_9(df)	
 
-	print('Pergunta 10')
-	pergunta_10(df)	
+	# print('Pergunta 10')
+	# pergunta_10(df)	
 
-	print('Pergunta 11')
-	pergunta_11(sem_cancelamento)
+	# print('Pergunta 11')
+	# pergunta_11(sem_cancelamento)
 
-	print('Pergunta 12')
-	pergunta_12(sem_cancelamento)
+	# print('Pergunta 12')
+	# pergunta_12(sem_cancelamento)
 
-	print('Pergunta 13')
-	pergunta_13(sem_cancelamento)
+	# print('Pergunta 13')
+	# pergunta_13(sem_cancelamento)
 
