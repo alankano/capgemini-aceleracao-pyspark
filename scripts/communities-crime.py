@@ -85,12 +85,6 @@ def pergunta_7(df):
 	print('A correlação é:')
 	print(df.corr('ViolentCrimesPerPop', 'PolicOperBudg'))
 
-	# windowViolentCrimesPerPop = Window.partitionBy('PolicOperBudg').orderBy(F.col('ViolentCrimesPerPop').desc())
-	# return (df.withColumn('row', F.row_number().over(windowViolentCrimesPerPop))
-	# 		  .select('row', 'PolicOperBudg', 'ViolentCrimesPerPop')
-	# 		  .filter(F.col('ViolentCrimesPerPop').isNotNull())
-	# )
-
 def pergunta_8(df):
 	print('pergunta 8')
 	df = df.withColumn('PolicOperBudg',
@@ -161,21 +155,21 @@ if __name__ == "__main__":
 	df = missing_to_none(df)
 	
 	
-	#pergunta_1(df)
-	#pergunta_2(df)
-	#pergunta_3(df)
-	#pergunta_4(df)
-	#pergunta_5(df)
-	#pergunta_6(df)
-	#pergunta_7(df)
-	#pergunta_8(df)
-	#pergunta_9(df)
-	#pergunta_10(df)
-	#pergunta_11(df)
+	pergunta_1(df)
+	pergunta_2(df)
+	pergunta_3(df)
+	pergunta_4(df)
+	pergunta_5(df)
+	pergunta_6(df)
+	pergunta_7(df)
+	pergunta_8(df)
+	pergunta_9(df)
+	pergunta_10(df)
+	pergunta_11(df)
 	pergunta_12(df)
+
+
 	# arrumar erros mais fáceis como trim, upper and empty string 
 	# transformar empty em null se possível 
-	#  
 	#communityname -> identificador da comunidade  
-	#pergunta 1 
 	
