@@ -3,7 +3,46 @@ from pyspark import SparkContext, SparkConf
 from pyspark.sql import SparkSession
 from pyspark.sql import functions as F
 from pyspark.sql.types import StructType, StructField, StringType, IntegerType, FloatType
-from pyspark.sql.window import Window
+
+
+def check_empty_column(col):
+	return (F.col(col).isNull() | (F.col(col) == '') | F.col(col).rlike(REGEX_EMPTY_STR))
+
+
+def ensure_quality(dataframe):
+	df = dataframe
+	for column in dataframe.columns:
+		df = df.withColumn('qa_'+column, (
+			F.when(
+				check_empty_column(column), 'MN'
+			).when(
+				F.col(column) == '?', 'M'
+			).otherwise(
+				F.col(column)
+			)
+		))
+	return df
+
+def transform_df(dataframe):
+	df = dataframe
+	for column in dataframe.columns:
+		if not column.startswith('qa_'):
+			if column == 'communityname':
+				pass
+			else:
+				df = data.withColumn(column, (
+					F.when(
+						check_empty_column(column), None
+					).when(
+						F.col(column) == '?', None
+					).when(
+						F.col(column).contains('.'), F.col(column).cast(FloatType())
+					).otherwise(
+						F.col(column).cast(IntegerType())
+					)
+				))
+	return df
+
 
 def trim_all_columns(df):
 	for c_name in df.columns:
@@ -71,9 +110,9 @@ def pergunta_5(df):
 def pergunta_6(df):
 	print('pergunta 6')
 	return (df.groupBy('communityname')
-			  .agg({'agePct16t24': 'max'})
-			  .withColumnRenamed('max(agePct16t24)', 'agePct16t24')
-			  .sort('agePct16t24', ascending =False).show()
+			  .agg({'agePct12t21': 'max'})
+			  .withColumnRenamed('max(agePct12t21)', 'agePct12t21')
+			  .sort('agePct12t21', ascending =False).show()
 			  )
 
 def pergunta_7(df):
