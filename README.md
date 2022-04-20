@@ -27,4 +27,9 @@ Para executar os Jupyter Notebooks deste repositório é necessário ter o [Spar
 │   ├── 1_quality.ipynb          <- Contém apontamentos de dados inconsistêntes.
 │   ├── 2_transformation.ipynb   <- Contem tratamentos dos dados.
 │   ├── 3_report.ipynb           <- Contém respostas de negócio baseadas em dados.
+│
+├── scripts
+│   ├── census-income.py         <- Contém as respostas de census-income.
+│   ├── communities-crime.py     <- Contem as respostas de communities-crime.
+│   ├── online-retail.py         <- Contém as respostas de online-retail.
 ```
